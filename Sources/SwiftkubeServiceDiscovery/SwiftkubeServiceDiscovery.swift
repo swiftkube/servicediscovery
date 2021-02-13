@@ -104,39 +104,6 @@ public class KubernetesServiceDiscovery: ServiceDiscovery {
 	}
 }
 
-final class ServiceDiscoveryDelegate: ResourceWatcherDelegate {
-
-	private let nextResultHandler: (Result<[KubernetesPod], Error>) -> Void
-	private let completionHandler: (CompletionReason) -> Void
-	private var currentPods: Set<KubernetesPod>
-
-	init(
-		onNext nextResultHandler: @escaping (Result<[KubernetesPod], Error>) -> Void,
-		onComplete completionHandler: @escaping (CompletionReason) -> Void
-	) {
-		self.nextResultHandler = nextResultHandler
-		self.completionHandler = completionHandler
-		self.currentPods = []
-	}
-
-	func onEvent(event: EventType, resource: core.v1.Pod) {
-		guard let pod = KubernetesPod(from: resource) else {
-			return
-		}
-
-		switch event {
-		case .added:
-			fallthrough
-		case .modified:
-			if !currentPods.contains(pod) {
-				currentPods.insert(pod)
-			}
-		case .deleted:
-			currentPods.remove(pod)
-		case .error:
-			// NOOP for now
-			return
-		}
 
 		nextResultHandler(.success(Array(currentPods)))
 	}
