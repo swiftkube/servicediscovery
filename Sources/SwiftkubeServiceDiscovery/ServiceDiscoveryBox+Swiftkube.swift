@@ -19,16 +19,18 @@ import ServiceDiscovery
 import SwiftkubeClient
 import SwiftkubeModel
 
-extension ServiceDiscoveryBox where Service == LookupObject, Instance == KubernetesPod {
+// MARK: - ServiceDiscoveryBox
 
-	public func shutdown(queue: DispatchQueue, _ callback: @escaping (Error?) -> Void) {
+public extension ServiceDiscoveryBox where Service == LookupObject, Instance == KubernetesPod {
+
+	func shutdown(queue: DispatchQueue, _ callback: @escaping (Error?) -> Void) {
 		guard let serviceDiscovery = try? unwrapAs(KubernetesServiceDiscovery.self) else {
 			return
 		}
 		serviceDiscovery.shutdown(queue: queue, callback)
 	}
 
-	public func syncShutdown() throws {
+	func syncShutdown() throws {
 		guard let serviceDiscovery = try? unwrapAs(KubernetesServiceDiscovery.self) else {
 			return
 		}

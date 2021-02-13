@@ -16,10 +16,12 @@
 
 import Dispatch
 import ServiceDiscovery
-import SwiftkubeModel
 import SwiftkubeClient
+import SwiftkubeModel
 
-public struct DiscoveryObject: Hashable {
+// MARK: - LookupObject
+
+public struct LookupObject: Hashable {
 	public let namespace: NamespaceSelector?
 	public let options: [ListOption]?
 
@@ -90,7 +92,7 @@ public struct KubernetesPod: Hashable {
 		hasher.combine(ip)
 	}
 
-	public static func ==(lhs: KubernetesPod, rhs: KubernetesPod) -> Bool {
+	public static func == (lhs: KubernetesPod, rhs: KubernetesPod) -> Bool {
 		lhs.uid == rhs.uid && lhs.name == rhs.name && lhs.namespace == rhs.namespace && lhs.ip == rhs.ip
 	}
 }
@@ -113,7 +115,7 @@ public struct Configuration {
 	public let retryStrategy: RetryStrategy
 
 	public init(
-		retryStrategy: RetryStrategy = RetryStrategy.init(policy: .always, backoff: .fixedDelay(10))
+		retryStrategy: RetryStrategy = RetryStrategy(policy: .always, backoff: .fixedDelay(10))
 	) {
 		self.retryStrategy = retryStrategy
 	}
