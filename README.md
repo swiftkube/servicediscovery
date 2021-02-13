@@ -1,13 +1,39 @@
 # Swiftkube:ServiceDiscovery
 
+<p align="center">
+	<img src="https://img.shields.io/badge/Swift-5.2-orange.svg" />
+	<a href="https://v1-18.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/">
+		<img src="https://img.shields.io/badge/Kubernetes-1.18.13-blue.svg" alt="Kubernetes 1.18.13"/>
+	</a>
+	<img src="https://img.shields.io/badge/SwiftkubeClient-0.6.0-blue.svg" />
+	<a href="https://swift.org/package-manager">
+		<img src="https://img.shields.io/badge/swiftpm-compatible-brightgreen.svg?style=flat" alt="Swift Package Manager" />
+	</a>
+	<img src="https://img.shields.io/badge/platforms-mac+linux-brightgreen.svg?style=flat" alt="Mac + Linux" />
+	<a href="https://github.com/swiftkube/servicediscovery/actions">
+		<img src="https://github.com/swiftkube/servicediscovery/workflows/swiftkube-servicediscovery-ci/badge.svg" alt="CI Status">
+	</a>
+</p>
+
 An implementation of the [Swift Service Discovery API](https://github.com/apple/swift-service-discovery) for Kubernetes based on [SwiftkubeClient](https://github.com/swiftkube/client).  
 
 ## Table of contents
 
+* [Overview](#overview)
 * [Usage](#usage)
 * [RBAC](#rbac)
 * [Installation](#installation)
 * [License](#license)
+
+#Overview
+
+- [x] Auto-configuration for different environments 
+- [x] Support for all K8s `ListOptions`
+- [x] Support for reconnect and retry
+- [x] Discovery for K8s Pod objects
+- [ ] Discovery for K8s Service objects
+- [ ] Complete documentation
+- [ ] End-to-end tests
 
 ## Usage
 
