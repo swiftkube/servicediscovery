@@ -99,6 +99,10 @@ public class KubernetesServiceDiscovery: ServiceDiscovery {
 		}
 	}
 
+	public func shutdown(queue: DispatchQueue, _ callback: @escaping (Error?) -> Void) {
+		client.shutdown(queue: queue, callback)
+	}
+
 	public func syncShutdown() throws {
 		try client.syncShutdown()
 	}
