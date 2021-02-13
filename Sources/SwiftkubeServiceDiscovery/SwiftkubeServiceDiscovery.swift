@@ -49,7 +49,7 @@ public class KubernetesServiceDiscovery: ServiceDiscovery {
 
 	public var defaultLookupTimeout: DispatchTimeInterval = .milliseconds(100)
 
-	public typealias Service = DiscoveryObject
+	public typealias Service = LookupObject
 	public typealias Instance = KubernetesPod
 
 	private let client: KubernetesClient
