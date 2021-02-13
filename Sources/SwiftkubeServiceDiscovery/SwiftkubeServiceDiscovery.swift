@@ -1,3 +1,19 @@
+//
+// Copyright 2020 Swiftkube Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
 import Dispatch
 import ServiceDiscovery
 import SwiftkubeModel
@@ -16,13 +32,27 @@ public struct DiscoveryObject: Hashable {
 	}
 }
 
+// MARK: - KubernetesPod
+
+/// Represents a discovered Kuberenetes Pod.
 public struct KubernetesPod: Hashable {
+
+	/// The UID of this Pod object.
 	public let uid: String
+
+	/// The version of this Pod object.
 	public let resourceVersion: String
+
+	/// The name of this Pod object.
 	public let name: String
+
+	/// The namespace of this Pod object.
 	public let namespace: String
 
+	/// The labels of this Pod object.
 	public let labels: [String: String]?
+
+	/// The Pod IP address.
 	public let ip: String
 
 	internal init?(from pod: core.v1.Pod) {
@@ -42,6 +72,26 @@ public struct KubernetesPod: Hashable {
 		self.namespace = namespace
 		self.labels = pod.metadata?.labels
 		self.ip = podIp
+	}
+
+	internal init(host: String) {
+		self.uid = "uid-[\(host)]"
+		self.resourceVersion = "1"
+		self.name = host
+		self.namespace = "default"
+		self.labels = nil
+		self.ip = host
+	}
+
+	public func hash(into hasher: inout Hasher) {
+		hasher.combine(uid)
+		hasher.combine(name)
+		hasher.combine(namespace)
+		hasher.combine(ip)
+	}
+
+	public static func ==(lhs: KubernetesPod, rhs: KubernetesPod) -> Bool {
+		lhs.uid == rhs.uid && lhs.name == rhs.name && lhs.namespace == rhs.namespace && lhs.ip == rhs.ip
 	}
 }
 
@@ -80,6 +130,7 @@ public class KubernetesServiceDiscovery: ServiceDiscovery {
 	public typealias Instance = KubernetesPod
 
 	private let client: KubernetesClient
+	private let config: Configuration
 
 	public convenience init?() {
 		guard let client = KubernetesClient() else {
@@ -151,11 +202,17 @@ public class KubernetesServiceDiscovery: ServiceDiscovery {
 	}
 }
 
+public extension KubernetesServiceDiscovery {
 
-		nextResultHandler(.success(Array(currentPods)))
+	static func inMemory<C: Collection>(lookup lookupObject: LookupObject, ips: C) -> ServiceDiscoveryBox<LookupObject, KubernetesPod> where C.Element == String {
+		let pods = ips.map(KubernetesPod.init(host:))
+		return inMemory(lookup: lookupObject, pods: pods)
 	}
 
-	func onError(error: SwiftkubeClientError) {
-		completionHandler(.serviceDiscoveryUnavailable)
+	static func inMemory<C: Collection>(lookup lookupObject: LookupObject, pods: C) -> ServiceDiscoveryBox<LookupObject, KubernetesPod> where C.Element == KubernetesPod {
+		let instances = [lookupObject: Array(pods)]
+		let configuration = InMemoryServiceDiscovery<LookupObject, KubernetesPod>.Configuration(serviceInstances: instances)
+		let inMemory = InMemoryServiceDiscovery(configuration: configuration)
+		return ServiceDiscoveryBox<LookupObject, KubernetesPod>(inMemory)
 	}
 }
