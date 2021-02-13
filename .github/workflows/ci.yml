@@ -1,0 +1,38 @@
+name: "swiftkube-servicediscovery-ci"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "*" ]
+
+jobs:
+  swiftformat-lint:
+      runs-on: ubuntu-18.04
+      steps:
+      - uses: actions/checkout@v2
+      - name: Install SwiftFormat
+        uses: Cyberbeni/install-swift-tool@v2
+        with:
+          url: https://github.com/nicklockwood/SwiftFormat
+      - name: Lint Sources
+        run: swiftformat --lint Sources
+
+  macOS:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: swift build -v
+    - name: Test
+      run: swift test  --enable-test-discovery
+
+  linux:
+    runs-on: ubuntu-18.04
+    container: swift:5.2
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: swift build -v --enable-test-discovery
+    - name: Test
+      run: swift test  --enable-test-discovery
