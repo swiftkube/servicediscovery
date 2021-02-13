@@ -45,6 +45,33 @@ public struct KubernetesPod: Hashable {
 	}
 }
 
+// MARK: - Configuration
+
+public struct Configuration {
+
+	/// Default configuration
+	public static var `default`: Configuration {
+		.init()
+	}
+
+	/// Lookup timeout in case `deadline` is not specified.
+	///
+	/// Currently not used.
+	public var defaultLookupTimeout: DispatchTimeInterval = .milliseconds(100)
+
+	/// Retry strategy to control the reconnect behaviour for service discovery subsriptions in case of non-recoverable errors.
+	public let retryStrategy: RetryStrategy
+
+	public init(
+		retryStrategy: RetryStrategy = RetryStrategy.init(policy: .always, backoff: .fixedDelay(10))
+	) {
+		self.retryStrategy = retryStrategy
+	}
+}
+
+// MARK: - KubernetesServiceDiscovery
+
+/// Service Discovery implementation for Kuberentes objects.
 public class KubernetesServiceDiscovery: ServiceDiscovery {
 
 	public var defaultLookupTimeout: DispatchTimeInterval = .milliseconds(100)
@@ -61,8 +88,19 @@ public class KubernetesServiceDiscovery: ServiceDiscovery {
 		self.init(client: client)
 	}
 
-	public init(client: KubernetesClient) {
+	public convenience init?(config: Configuration) {
+		guard let client = KubernetesClient() else {
+			return nil
+		}
+		self.init(client: client, config: config)
+	}
+
+	public init(
+		client: KubernetesClient,
+		config: Configuration = Configuration.default
+	) {
 		self.client = client
+		self.config = config
 	}
 
 	public func lookup(
@@ -89,7 +127,12 @@ public class KubernetesServiceDiscovery: ServiceDiscovery {
 		let delegate = ServiceDiscoveryDelegate(onNext: nextResultHandler, onComplete: completionHandler)
 
 		do {
-			let task = try client.pods.watch(in: service.namespace, options: service.options, delegate: delegate)
+			let task = try client.pods.watch(
+				in: service.namespace,
+				options: service.options,
+				retryStrategy: config.retryStrategy,
+				delegate: delegate
+			)
 			return CancellationToken(isCancelled: false) { _ in
 				task.cancel()
 			}
