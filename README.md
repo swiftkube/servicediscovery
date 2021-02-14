@@ -44,7 +44,7 @@ To use this service discovery import `SwiftkubeServiceDiscovery` and init an ins
 ```swift
 import SwiftkubeServiceDiscovery
 
-let discovery = SwiftkubeServiceDiscovery()
+let discovery = KubernetesServiceDiscovery()
 ```
 
 Underneath, `SwiftkubeServiceDiscovery` uses `SwiftkubeClient` for all Kubernets communication, which configures itself automatically for the environement it runs in.
@@ -53,7 +53,7 @@ You can also pass an existing client instance to the service discovery:
 
 ```swift
 let client = KubernetesClient()
-let discovery = SwiftkubeServiceDiscovery(client: client)
+let discovery = KubernetesServiceDiscovery(client: client)
 ```
 
 You should shut down the `SwiftkubeServiceDiscovery ` instance, which in turn shuts down the underlying `SwiftkubeClient`. You can shutdown either in a synchronius way or asynchronously by providing a `DispatchQueue` for the completion callback.
@@ -87,7 +87,7 @@ let strategy = RetryStrategy(
 
 let config = Configuration(retryStrategy: strategy)
 
-let discovery = SwiftkubeServiceDiscovery(config: config)
+let discovery = KubernetesServiceDiscovery(config: config)
 ```
 
 ### Service lookup
