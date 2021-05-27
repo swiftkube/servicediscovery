@@ -3,9 +3,9 @@
 <p align="center">
 	<img src="https://img.shields.io/badge/Swift-5.2-orange.svg" />
 	<a href="https://v1-18.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/">
-		<img src="https://img.shields.io/badge/Kubernetes-1.18.13-blue.svg" alt="Kubernetes 1.18.13"/>
+		<img src="https://img.shields.io/badge/Kubernetes-1.19.8-blue.svg" alt="Kubernetes 1.19.8"/>
 	</a>
-	<img src="https://img.shields.io/badge/SwiftkubeClient-0.6.0-blue.svg" />
+	<img src="https://img.shields.io/badge/SwiftkubeClient-0.9.0-blue.svg" />
 	<a href="https://swift.org/package-manager">
 		<img src="https://img.shields.io/badge/swiftpm-compatible-brightgreen.svg?style=flat" alt="Swift Package Manager" />
 	</a>
