@@ -14,15 +14,17 @@ let package = Package(
 			targets: ["SwiftkubeServiceDiscovery"]),
 	],
 	dependencies: [
-		.package(name: "SwiftkubeClient", url: "https://github.com/swiftkube/client.git", from: "0.9.0"),
-		.package(url: "https://github.com/apple/swift-service-discovery.git", from: "1.0.0")
+		.package(url: "https://github.com/swiftkube/client.git", from: "0.21.0"),
+		.package(url: "https://github.com/apple/swift-service-discovery.git", from: "1.3.0"),
+		.package(url: "https://github.com/apple/swift-log.git", .upToNextMajor(from: "1.6.2")),
 	],
 	targets: [
 		.target(
 			name: "SwiftkubeServiceDiscovery",
 			dependencies: [
-				.product(name: "SwiftkubeClient", package: "SwiftkubeClient"),
-				.product(name: "ServiceDiscovery", package: "swift-service-discovery")
+				.product(name: "Logging", package: "swift-log"),
+				.product(name: "ServiceDiscovery", package: "swift-service-discovery"),
+				.product(name: "SwiftkubeClient", package: "client"),
 			]),
 		.testTarget(
 			name: "SwiftkubeServiceDiscoveryTests",
