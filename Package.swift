@@ -15,8 +15,8 @@ let package = Package(
 	],
 	dependencies: [
 		.package(url: "https://github.com/swiftkube/client.git", from: "0.21.0"),
-		.package(url: "https://github.com/apple/swift-service-discovery.git", from: "1.3.0"),
-		.package(url: "https://github.com/apple/swift-log.git", .upToNextMajor(from: "1.6.2")),
+		.package(url: "https://github.com/apple/swift-service-discovery.git", from: "1.4.0"),
+		.package(url: "https://github.com/apple/swift-log.git", from: "1.6.2"),
 	],
 	targets: [
 		.target(

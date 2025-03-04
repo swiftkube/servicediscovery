@@ -15,206 +15,158 @@
 //
 
 import Dispatch
+import Foundation
+import Logging
 import ServiceDiscovery
 import SwiftkubeClient
 import SwiftkubeModel
 
-// MARK: - LookupObject
+// MARK: - SwiftkubeServiceDiscovery
 
-public struct LookupObject: Hashable {
-	public let namespace: NamespaceSelector?
-	public let options: [ListOption]?
+/// Service Discovery implementation for Kubernetes objects.
+public actor SwiftkubeServiceDiscovery<Resource: KubernetesAPIResource & ListableResource>: @preconcurrency ServiceDiscovery {
 
-	public init(
-		namespace: NamespaceSelector? = nil,
-		options: [ListOption]? = nil
-	) {
-		self.namespace = namespace
-		self.options = options
-	}
-}
-
-// MARK: - KubernetesPod
-
-/// Represents a discovered Kuberenetes Pod.
-public struct KubernetesPod: Hashable {
-
-	/// The UID of this Pod object.
-	public let uid: String
-
-	/// The version of this Pod object.
-	public let resourceVersion: String
-
-	/// The name of this Pod object.
-	public let name: String
-
-	/// The namespace of this Pod object.
-	public let namespace: String
-
-	/// The labels of this Pod object.
-	public let labels: [String: String]?
-
-	/// The Pod IP address.
-	public let ip: String
-
-	internal init?(from pod: core.v1.Pod) {
-		guard
-			let uid = pod.metadata?.uid,
-			let resourceVersion = pod.metadata?.resourceVersion,
-			let name = pod.metadata?.name,
-			let namespace = pod.metadata?.namespace,
-			let podIp = pod.status?.podIP
-		else {
-			return nil
-		}
-
-		self.uid = uid
-		self.resourceVersion = resourceVersion
-		self.name = name
-		self.namespace = namespace
-		self.labels = pod.metadata?.labels
-		self.ip = podIp
-	}
-
-	internal init(host: String) {
-		self.uid = "uid-[\(host)]"
-		self.resourceVersion = "1"
-		self.name = host
-		self.namespace = "default"
-		self.labels = nil
-		self.ip = host
-	}
-
-	public func hash(into hasher: inout Hasher) {
-		hasher.combine(uid)
-		hasher.combine(name)
-		hasher.combine(namespace)
-		hasher.combine(ip)
-	}
-
-	public static func == (lhs: KubernetesPod, rhs: KubernetesPod) -> Bool {
-		lhs.uid == rhs.uid && lhs.name == rhs.name && lhs.namespace == rhs.namespace && lhs.ip == rhs.ip
-	}
-}
-
-// MARK: - Configuration
-
-public struct Configuration {
-
-	/// Default configuration
-	public static var `default`: Configuration {
-		.init()
-	}
-
-	/// Lookup timeout in case `deadline` is not specified.
-	///
-	/// Currently not used.
-	public var defaultLookupTimeout: DispatchTimeInterval = .milliseconds(100)
-
-	/// Retry strategy to control the reconnect behaviour for service discovery subsriptions in case of non-recoverable errors.
-	public let retryStrategy: RetryStrategy
-
-	public init(
-		retryStrategy: RetryStrategy = RetryStrategy(policy: .always, backoff: .fixedDelay(10))
-	) {
-		self.retryStrategy = retryStrategy
-	}
-}
-
-// MARK: - KubernetesServiceDiscovery
-
-/// Service Discovery implementation for Kuberentes objects.
-public class KubernetesServiceDiscovery: ServiceDiscovery {
-
-	public var defaultLookupTimeout: DispatchTimeInterval = .milliseconds(100)
+	public var defaultLookupTimeout: DispatchTimeInterval = .seconds(1)
 
 	public typealias Service = LookupObject
-	public typealias Instance = KubernetesPod
+	public typealias Instance = Resource.List.Item
 
 	private let client: KubernetesClient
-	private let config: Configuration
+	private let config: SwiftkubeDiscoveryConfiguration
+	private let logger: Logger
 
-	public convenience init?() {
-		guard let client = KubernetesClient() else {
-			return nil
-		}
-		self.init(client: client)
+	private var watchlist: Set<Resource> = []
+	private var subscriptions: Dictionary<UUID, SwiftkubeClientTask<WatchEvent<Resource>>> = [:]
+
+	public init?() {
+		self.init(config: .default)
 	}
 
-	public convenience init?(config: Configuration) {
-		guard let client = KubernetesClient() else {
+	public init?(config: SwiftkubeDiscoveryConfiguration) {
+		guard let clientConfig = KubernetesClientConfig.initialize() else {
 			return nil
 		}
+
+		let client = KubernetesClient(config: clientConfig)
+
 		self.init(client: client, config: config)
 	}
 
 	public init(
 		client: KubernetesClient,
-		config: Configuration = Configuration.default
+		config: SwiftkubeDiscoveryConfiguration = SwiftkubeDiscoveryConfiguration.default,
+		logger: Logger = Logger(label: "sksd-do-not-log")
 	) {
 		self.client = client
 		self.config = config
+		self.logger = logger
 	}
 
 	public func lookup(
-		_ service: Service,
+		_ service: LookupObject,
 		deadline: DispatchTime?,
-		callback: @escaping (Result<[Instance], Error>) -> Void
+		callback: @Sendable @escaping (Result<[Instance], any Error>) -> Void
 	) {
-		client.pods.list(in: service.namespace, options: service.options).whenComplete { (result: Result<core.v1.PodList, Error>) in
-			switch result {
-			case let .failure(error):
-				callback(.failure(error))
-			case let .success(podList):
-				let pods = podList.compactMap(KubernetesPod.init(from:))
-				callback(.success(pods))
+		Task {
+			let namespace = service.namespace ?? .default
+			do {
+				let resourceClient: GenericKubernetesClient<Resource>
+				if let gvr = service.gvr {
+					resourceClient = client.for(Resource.self, gvr: gvr)
+				} else {
+					resourceClient = client.for(Resource.self)
+				}
+
+				logger.info("Performing lookup for: \(service)")
+				let resourceList = try await resourceClient.list(in: namespace, options: service.options)
+				let result: Result<[Instance], any Error> = .success(resourceList.items)
+				callback(result)
+			} catch {
+				let result: Result<[Instance], any Error> = .failure(error)
+				logger.error("Error performing lookup: \(error)")
+				callback(result)
 			}
 		}
 	}
 
 	public func subscribe(
-		to service: Service,
-		onNext nextResultHandler: @escaping (Result<[Instance], Error>) -> Void,
-		onComplete completionHandler: @escaping (CompletionReason) -> Void
+		to service: LookupObject,
+		onNext nextResultHandler: @Sendable @escaping (Result<[Instance], any Error>) -> Void,
+		onComplete completionHandler: @Sendable @escaping (CompletionReason) -> Void
 	) -> CancellationToken {
-		let delegate = ServiceDiscoveryDelegate(onNext: nextResultHandler, onComplete: completionHandler)
-
-		do {
-			let task = try client.pods.watch(
-				in: service.namespace,
-				options: service.options,
-				retryStrategy: config.retryStrategy,
-				delegate: delegate
-			)
-			return CancellationToken(isCancelled: false) { _ in
-				task.cancel()
+		let identifier = UUID()
+		let token = CancellationToken { reason in
+			Task {
+				await self.handleCancelation(identifier: identifier)
+				completionHandler(reason)
 			}
-		} catch {
-			completionHandler(.serviceDiscoveryUnavailable)
-			return CancellationToken(isCancelled: true)
 		}
+
+		Task {
+			let namespace = service.namespace ?? .default
+			do {
+				let resourceClient: GenericKubernetesClient<Resource>
+				if let gvr = service.gvr {
+					resourceClient = client.for(Resource.self, gvr: gvr)
+				} else {
+					resourceClient = client.for(Resource.self)
+				}
+
+				logger.info("Starting watch task [\(identifier)] for: \(service)")
+				let task = try await resourceClient.watch(in: namespace, retryStrategy: config.retryStrategy)
+				subscriptions[identifier] = task
+
+				for try await event in await task.start() {
+					if (token.isCancelled) {
+						break
+					}
+
+					switch event.type {
+					case .added:
+						fallthrough
+					case .modified:
+						guard !watchlist.contains(event.resource) else {
+							logger.debug("Resource already tracked: \(event)")
+							continue
+						}
+
+						logger.debug("Received resource: \(event)")
+						let result: Result<[Instance], any Error> = .success([event.resource as! Instance])
+						nextResultHandler(result)
+					case .deleted:
+						watchlist.remove(event.resource)
+					case .error:
+						logger.warning("Received error event: \(event)")
+					}
+				}
+			} catch {
+				let result: Result<[Instance], any Error> = .failure(error)
+				nextResultHandler(result)
+			}
+		}
+
+		return token
 	}
 
-	public func shutdown(queue: DispatchQueue, _ callback: @escaping (Error?) -> Void) {
+	private func handleCancelation(identifier: UUID) async {
+		guard let task = subscriptions[identifier] else {
+			return
+		}
+
+		await task.cancel()
+		logger.info("Cancelling watch task [\(identifier)] due to token cancellation")
+		subscriptions.removeValue(forKey: identifier)
+	}
+
+	nonisolated public func shutdown(queue: DispatchQueue, _ callback: @Sendable @escaping (Error?) -> Void) {
 		client.shutdown(queue: queue, callback)
 	}
 
-	public func syncShutdown() throws {
+	nonisolated public func syncShutdown() throws {
 		try client.syncShutdown()
 	}
-}
 
-public extension KubernetesServiceDiscovery {
-
-	static func inMemory<C: Collection>(lookup lookupObject: LookupObject, ips: C) -> ServiceDiscoveryBox<LookupObject, KubernetesPod> where C.Element == String {
-		let pods = ips.map(KubernetesPod.init(host:))
-		return inMemory(lookup: lookupObject, pods: pods)
-	}
-
-	static func inMemory<C: Collection>(lookup lookupObject: LookupObject, pods: C) -> ServiceDiscoveryBox<LookupObject, KubernetesPod> where C.Element == KubernetesPod {
-		let instances = [lookupObject: Array(pods)]
-		let configuration = InMemoryServiceDiscovery<LookupObject, KubernetesPod>.Configuration(serviceInstances: instances)
-		let inMemory = InMemoryServiceDiscovery(configuration: configuration)
-		return ServiceDiscoveryBox<LookupObject, KubernetesPod>(inMemory)
+	public func shutdown() async throws {
+		try await client.shutdown()
 	}
 }

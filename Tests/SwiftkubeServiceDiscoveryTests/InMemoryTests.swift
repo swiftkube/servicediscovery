@@ -15,22 +15,26 @@
 //
 
 import XCTest
+import SwiftkubeModel
 @testable import SwiftkubeServiceDiscovery
 
-final class SwiftkubeServiceDiscoveryTests: XCTestCase {
+final class InMemoryTests: XCTestCase {
 
 	func testInMemory() {
 		let lookup = expectation(description: "lookup")
-		let object = LookupObject(namespace: .default)
+		let lookupObject = LookupObject(namespace: .default)
 
-		let sd = KubernetesServiceDiscovery.inMemory(lookup: object, ips: ["10.10.0.1", "10.10.0.2"])
+		let serviceDiscovery = SwiftkubeServiceDiscovery<core.v1.Pod>.inMemory(
+			lookup: lookupObject,
+			ips: ["10.10.0.1", "10.10.0.2"]
+		)
 
-		sd.lookup(LookupObject(namespace: .default)) { (result) in
+		serviceDiscovery.lookup(lookupObject) { (result) in
 			switch result {
 			case let .success(pods):
-				XCTAssertEqual(pods, [
-					KubernetesPod(host: "10.10.0.1"),
-					KubernetesPod(host: "10.10.0.2"),
+				XCTAssertEqual(pods.map { $0.status?.podIP }, [
+					"10.10.0.1",
+					"10.10.0.2",
 				])
 			case .failure:
 				XCTFail()
