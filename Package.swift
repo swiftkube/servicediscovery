@@ -1,4 +1,4 @@
-// swift-tools-version:5.2
+// swift-tools-version: 5.9
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
 	name: "SwiftkubeServiceDiscovery",
 	platforms: [
-		.macOS(.v10_15)
+		.macOS(.v12)
 	],
 	products: [
 		.library(
@@ -27,5 +27,6 @@ let package = Package(
 		.testTarget(
 			name: "SwiftkubeServiceDiscoveryTests",
 			dependencies: ["SwiftkubeServiceDiscovery"]),
-	]
+	],
+	swiftLanguageVersions: [.v5, .version("6")]
 )
