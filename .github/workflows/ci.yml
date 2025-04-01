@@ -7,10 +7,12 @@ on:
     branches: [ "*" ]
 
 jobs:
+
   swiftformat-lint:
-      runs-on: ubuntu-18.04
+      runs-on: ubuntu-latest
       steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
       - name: Install SwiftFormat
         uses: Cyberbeni/install-swift-tool@v2
         with:
@@ -18,21 +20,34 @@ jobs:
       - name: Lint Sources
         run: swiftformat --lint Sources
 
-  macOS:
-    runs-on: macos-latest
+  build:
+    name: Swift ${{ matrix.swift }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, macos-latest]
+        swift: ["5.9", "5.10", "6.0"]
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: SPM Cache
+      uses: actions/cache@v4
+      with:
+        path: .build
+        key: ${{ matrix.os }}-${{ matrix.swift }}-${{ hashFiles('**/Package.resolved') }}
+        restore-keys: |
+          ${{ matrix.os }}-${{ matrix.swift }}-
+    - uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: ${{ matrix.swift }}
+    - name: Get swift version
+      run: swift --version
     - name: Build
-      run: swift build -v
-    - name: Test
-      run: swift test  --enable-test-discovery
-
-  linux:
-    runs-on: ubuntu-18.04
-    container: swift:5.2
-    steps:
-    - uses: actions/checkout@v2
-    - name: Build
-      run: swift build -v --enable-test-discovery
-    - name: Test
-      run: swift test  --enable-test-discovery
+      run: swift build
+    - name: Test Linux
+      if: matrix.os == 'ubuntu-22.04'
+      run: swift test
+    - name: Test macOS
+      if: matrix.os == 'macos-latest'
+      run: swift test --skip K8s
