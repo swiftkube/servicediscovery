@@ -10,7 +10,7 @@
 	<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/">
 		<img src="https://img.shields.io/badge/Kubernetes-1.32.0-blue.svg" alt="Kubernetes 1.32.0"/>
 	</a>
-	<img src="https://img.shields.io/badge/SwiftkubeClient-0.21.0-blue.svg" />
+	<img src="https://img.shields.io/badge/SwiftkubeClient-0.22.0-blue.svg" />
 	<a href="https://swift.org/package-manager">
 		<img src="https://img.shields.io/badge/swiftpm-compatible-brightgreen.svg?style=flat" alt="Swift Package Manager" />
 	</a>
@@ -207,7 +207,7 @@ import PackageDescription
 let package = Package(
     // ...
     dependencies: [
-        .package(name: "SwiftkubeServiceDiscovery", url: "https://github.com/swiftkube/servicediscovery.git", from: "0.3.0")
+        .package(name: "SwiftkubeServiceDiscovery", url: "https://github.com/swiftkube/servicediscovery.git", from: "0.2.0")
     ],
     targets: [
         .target(name: "<your-target>", dependencies: [
