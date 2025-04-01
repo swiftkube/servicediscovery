@@ -14,7 +14,7 @@ let package = Package(
 			targets: ["SwiftkubeServiceDiscovery"]),
 	],
 	dependencies: [
-		.package(url: "https://github.com/swiftkube/client.git", from: "0.21.0"),
+		.package(url: "https://github.com/swiftkube/client.git", from: "0.22.0"),
 		.package(url: "https://github.com/apple/swift-service-discovery.git", from: "1.4.0"),
 		.package(url: "https://github.com/apple/swift-log.git", from: "1.6.2"),
 	],
